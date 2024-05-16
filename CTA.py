@@ -57,3 +57,47 @@ def stationByCoords(lat,long):
      nearest = nearest.iloc[(nearest['Latitude'] - lat).abs().argsort()[:5]]
      nearest = nearest.iloc[(nearest['Longitude'] - long).abs().argsort()[:5]]
      return nearest.iloc[0]
+
+# returns all stations on a line such that their position is not '-1' for that line
+def stationsOnLine(line):
+     match line.lower():
+          case 'red':
+               return stations_df.loc[stations_df['Red'] >= 0].reset_index(drop = True)
+          case 'green':
+               return stations_df.loc[stations_df['Green'] >= 0].reset_index(drop = True)
+          case 'blue':
+               return stations_df.loc[stations_df['Blue'] >= 0].reset_index(drop = True)
+          case 'brown':
+               return stations_df.loc[stations_df['Brown'] >= 0].reset_index(drop = True)
+          case 'purple':
+               return stations_df.loc[stations_df['Purple'] >= 0].reset_index(drop = True)
+          case 'pink':
+               return stations_df.loc[stations_df['Pink'] >= 0].reset_index(drop = True)
+          case 'orange':
+               return stations_df.loc[stations_df['Orange'] >= 0].reset_index(drop = True)
+
+# returns all stations with a name
+def stationByName(name):
+     return stations_df.loc[stations_df["Name"].str.lower() == name.lower()].reset_index(drop = True)
+
+
+# returns all stations with a given station description
+def stationByType(type):
+     return stations_df.loc[stations_df["Type"].str.lower() == type.lower()].reset_index(drop = True)
+
+def stationByWheelChair(wc):
+     return stations_df.loc[stations_df["Accessibility"] == wc].reset_index(drop = True)
+
+
+# save current stations_df as CSV to load on reboot
+def saveStations():
+    file = open("CTAStops.csv", "w")
+    columnNames = str(list(stations_df.columns.values))
+    columnNames = columnNames.strip('[]')
+    columnNames = columnNames.replace('\'',"").replace(" ","")
+    file.write(columnNames + "\n")
+    for index, row in stations_df.iterrows():
+        string = str(list(row)).strip('[]') + "\n"
+        string = string.replace("\'","").replace(" ","")
+        file.write(string)
+    file.close()
