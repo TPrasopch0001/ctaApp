@@ -37,3 +37,23 @@ def dfToStation(index):
     stationLines = [dfStation['Red'],dfStation['Green'],dfStation['Blue'], dfStation['Brown'],dfStation['Purple'],dfStation['Pink'],dfStation['Orange']]
     newStation = Station(dfStation['Name'],dfStation['Latitude'],dfStation['Longitude'],dfStation['Type'],dfStation['Accessibility'],stationLines)
     return newStation
+
+# tries to find the index of a station using it's name, longitude, and latitude
+def stationToDFIndex(station):
+    index = stations_df.loc[(stations_df['Name'] == station.name) & (stations_df['Latitude'] == station.lat) & (stations_df['Longitude'] == station.long)].index[0]
+    return index
+
+# deletes the station at the given index
+def deleteStation(index):
+    if index < len(stations_df.index):
+        stations_df.drop(index, inplace = True)
+        stations_df.reset_index(drop = True, inplace = True)
+
+# searching methods
+
+# returns the closest station given a pair of floats
+def stationByCoords(lat,long):
+     nearest = stations_df.copy()
+     nearest = nearest.iloc[(nearest['Latitude'] - lat).abs().argsort()[:5]]
+     nearest = nearest.iloc[(nearest['Longitude'] - long).abs().argsort()[:5]]
+     return nearest.iloc[0]
