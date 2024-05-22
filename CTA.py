@@ -5,7 +5,7 @@ import dearpygui.dearpygui as dpg
 pd.set_option("mode.copy_on_write", True)
 
 # makes lines in order: red,green,blue,brown,purple,pink,orange
-stations_df = pd.read_csv("project/CTAStops.csv")
+stations_df = pd.read_csv("CTAStops.csv")
 
 # Station class, manages each station a little bit easier
 class Station:
@@ -101,3 +101,19 @@ def saveStations():
         string = string.replace("\'","").replace(" ","")
         file.write(string)
     file.close()
+
+dpg.create_context()
+dpg.create_viewport(title='CTA Project', width=1280, height=720)
+dpg.set_viewport_vsync(True)
+
+with dpg.window(tag = "Main"):
+    with dpg.menu_bar():
+        with dpg.menu(label = "Search"):
+            dpg.add_menu_item(label = "On A Line")
+            dpg.add_menu_item(label = "Station Description")
+
+dpg.set_primary_window("Main",True)
+dpg.setup_dearpygui()
+dpg.show_viewport()
+dpg.start_dearpygui()
+dpg.destroy_context()
