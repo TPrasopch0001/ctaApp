@@ -102,6 +102,25 @@ def saveStations():
         file.write(string)
     file.close()
 
+
+def generateSearchWindow(search_df):
+    if search_df is not None:
+        columnNames = search_df.columns.values.tolist()
+        with dpg.window(pos = (300,100)):
+            with dpg.table(header_row=True, resizable=True, policy=dpg.mvTable_SizingStretchProp,
+                            borders_outerH=True, borders_innerV=True, borders_innerH=True, borders_outerV=True):
+                for i in columnNames:
+                    dpg.add_table_column(label = i)
+                for i in range(0,search_df.shape[0]):
+                    with dpg.table_row():
+                        row_list = search_df.loc[i, :].values.flatten().tolist()
+                        for j in row_list:
+                            with dpg.table_cell():
+                                dpg.add_button(label = j)
+    else:
+        with dpg.window(pos = (300,100)):
+            dpg.add_text("Sorry, there were no stations found")
+
 dpg.create_context()
 dpg.create_viewport(title='CTA Project', width=1280, height=720)
 dpg.set_viewport_vsync(True)
@@ -109,9 +128,10 @@ dpg.set_viewport_vsync(True)
 with dpg.window(tag = "Main"):
     with dpg.menu_bar():
         with dpg.menu(label = "Search"):
-            dpg.add_menu_item(label = "On A Line")
+            dpg.add_menu_item(label = "On A Line", callback = generateSearchWindow(stationsOnLine("Green")))
             dpg.add_menu_item(label = "Station Description")
 
+dpg.set_exit_callback(callback = saveStations())
 dpg.set_primary_window("Main",True)
 dpg.setup_dearpygui()
 dpg.show_viewport()
