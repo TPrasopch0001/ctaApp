@@ -102,6 +102,18 @@ def saveStations():
         file.write(string)
     file.close()
 
+def searchLinePrompt():
+    with dpg.window(label = "Searching By Line", width = 200, height = 100, pos = (100,100)):
+        dpg.add_text("Line: ")
+        dpg.add_input_text(tag = "LineInput", width = 100)
+        dpg.add_button(label = "Search", tag = "SearchButton")
+    with dpg.item_handler_registry(tag = "widget handler") as handler:
+        dpg.add_item_clicked_handler(callback = searchLine)
+    dpg.bind_item_handler_registry("SearchButton", "widget handler")
+
+def searchLine():
+    search_df = stationsOnLine(dpg.get_value("LineInput"))
+    generateSearchWindow(search_df)
 
 def generateSearchWindow(search_df):
     if search_df is not None:
@@ -128,7 +140,7 @@ dpg.set_viewport_vsync(True)
 with dpg.window(tag = "Main"):
     with dpg.menu_bar():
         with dpg.menu(label = "Search"):
-            dpg.add_menu_item(label = "On A Line", callback = generateSearchWindow(stationsOnLine("Green")))
+            dpg.add_menu_item(label = "On A Line", callback = searchLinePrompt)
             dpg.add_menu_item(label = "Station Description")
 
 dpg.set_exit_callback(callback = saveStations())
