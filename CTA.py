@@ -102,54 +102,70 @@ def saveStations():
         file.write(string)
     file.close()
 
-def searchLinePrompt():
-    if dpg.does_alias_exist("LineInput"):
-        dpg.remove_alias("LineInput")
-        dpg.remove_alias("SearchLineButton")
-        dpg.remove_alias("Line Handler")
-    with dpg.window(label = "Searching By Line", width = 200, height = 100, pos = (100,100), on_close = deleteResults):
-        dpg.add_text("Line: ")
-        dpg.add_input_text(tag = "LineInput", width = 100)
-        dpg.add_button(label = "Search", tag = "SearchLineButton")
-    with dpg.item_handler_registry(tag = "Line Handler") as handler:
-        dpg.add_item_clicked_handler(callback = searchLine)
-    dpg.bind_item_handler_registry("SearchLineButton", "Line Handler")
 
-def searchLine():
-    search_df = stationsOnLine(dpg.get_value("LineInput"))
-    generateSearchWindow(search_df)
 
-def deleteResults():
-    if dpg.does_item_exist("results"):
-        dpg.delete_item("results")
+dpg.create_context()
+dpg.create_viewport(title='CTA Project', width=1280, height=720)
+dpg.set_viewport_vsync(True)
 
-def searchTypePrompt():
-    numTypes = stations_df['Type'].unique().tolist()
-    if dpg.does_alias_exist("TypeInput"):
-        dpg.remove_alias("TypeInput")
-        dpg.remove_alias("SearchTypeButton")
-        dpg.remove_alias("Type Handler")
-    with dpg.window(label = "Searching By Station Description", width = 275, height = 150, pos = (25,100), on_close = deleteResults) as typeWindow:
-        dpg.add_text("Type: ")
-        dpg.add_listbox(numTypes,num_items = 4,tag = "TypeInput")
-        dpg.add_button(label = "Search", tag = "SearchTypeButton")
-    with dpg.item_handler_registry(tag = "Type Handler") as handler:
-        dpg.add_item_clicked_handler(callback = searchType)
-    dpg.bind_item_handler_registry("SearchTypeButton", "Type Handler")
-    
+with dpg.window(tag = "Main") as main:
 
-def searchType():
-    search_df = stationByType(dpg.get_value("TypeInput"))
-    generateSearchWindow(search_df)
+# Methods for within main window
+    def searchLinePrompt():
+        if dpg.does_item_exist("searchTypeGroup"):
+            dpg.delete_item("searchTypeGroup")
+            dpg.delete_item("Type Handler")
+        with dpg.group(tag = "searchLineGroup",parent = searchChild):
+            dpg.add_text("Line: ")
+            dpg.add_input_text(tag = "LineInput", width = 100)
+            dpg.add_button(label = "Search", tag = "SearchLineButton", width = 50, height = 20)
+        with dpg.item_handler_registry(tag = "Line Handler"):
+            dpg.add_item_clicked_handler(callback = searchLine)
+        dpg.bind_item_handler_registry("SearchLineButton", "Line Handler")
 
-def generateSearchWindow(search_df):
-    if dpg.does_item_exist("results"):
-        dpg.delete_item("results")
-    if search_df is not None:
-        columnNames = search_df.columns.values.tolist()
-        with dpg.window(pos = (300,100), tag = "results"):
+    def searchLine():
+        dpg.delete_item(resultsChild,children_only = True)
+        search_df = stationsOnLine(dpg.get_value("LineInput"))
+        generateSearchWindow(search_df)
+
+    def searchTypePrompt():
+        numTypes = stations_df['Type'].unique().tolist()
+        if dpg.does_item_exist("searchLineGroup"):
+            dpg.delete_item("searchLineGroup")
+            dpg.delete_item("Line Handler")
+        with dpg.group(tag = "searchTypeGroup",parent = searchChild):
+            dpg.add_text("Type: ")
+            dpg.add_listbox(numTypes,num_items = 4,tag = "TypeInput")
+            dpg.add_button(label = "Search", tag = "SearchTypeButton")
+        with dpg.item_handler_registry(tag = "Type Handler"):
+            dpg.add_item_clicked_handler(callback = searchType)
+        dpg.bind_item_handler_registry("SearchTypeButton", "Type Handler")
+
+# Main Window Items
+    with dpg.group(tag = "mainGroup", horizontal = True):
+        with dpg.child_window(tag = "searchChild",width = (dpg.get_viewport_width())/4, height = dpg.get_item_height(main)) as searchChild:
+            dpg.add_text("search")
+        with dpg.child_window(tag = "resultsChild", height = dpg.get_item_height(main)) as resultsChild:
+            dpg.add_text("results")
+    with dpg.menu_bar():
+        with dpg.menu(label = "Search"):
+            dpg.add_menu_item(label = "On A Line", callback = searchLinePrompt)
+            dpg.add_menu_item(label = "Station Description", callback = searchTypePrompt)
+        with dpg.menu(label = "Modify"):
+            dpg.add_menu_item(label = "Station Name")
+
+    def searchType():
+        dpg.delete_item(resultsChild,children_only = True)
+        search_df = stationByType(dpg.get_value("TypeInput"))
+        generateSearchWindow(search_df)
+
+    def generateSearchWindow(search_df):
+        if dpg.does_item_exist("results"):
+            dpg.delete_item("results")
+        if search_df is not None:
+            columnNames = search_df.columns.values.tolist()
             with dpg.table(header_row=True, resizable=True, policy=dpg.mvTable_SizingStretchProp,
-                            borders_outerH=True, borders_innerV=True, borders_innerH=True, borders_outerV=True):
+                            borders_outerH=True, borders_innerV=True, borders_innerH=True, borders_outerV=True, parent = resultsChild):
                 for i in columnNames:
                     dpg.add_table_column(label = i)
                 for i in range(0,search_df.shape[0]):
@@ -158,22 +174,20 @@ def generateSearchWindow(search_df):
                         for j in row_list:
                             with dpg.table_cell():
                                 dpg.add_button(label = j)
-    else:
-        with dpg.window(pos = (300,100), tag = "results"):
-            dpg.add_text("Sorry, there were no stations found")
-    
+        else:
+            dpg.add_text("Sorry, there were no stations found", parent = resultsChild)
 
-dpg.create_context()
-dpg.create_viewport(title='CTA Project', width=1280, height=720)
-dpg.set_viewport_vsync(True)
-
-with dpg.window(tag = "Main"):
-    with dpg.menu_bar():
-        with dpg.menu(label = "Search"):
-            dpg.add_menu_item(label = "On A Line", callback = searchLinePrompt)
-            dpg.add_menu_item(label = "Station Description", callback = searchTypePrompt)
-
-dpg.set_exit_callback(callback = saveStations())
+with dpg.theme() as globalTheme:
+    with dpg.theme_component(dpg.mvAll):
+        dpg.add_theme_color(dpg.mvThemeCol_ChildBg, (150, 100, 100))
+        dpg.add_theme_color(dpg.mvThemeCol_Button, [150,100,100])
+    with dpg.theme_component(dpg.mvInputInt):
+        dpg.add_theme_color(dpg.mvThemeCol_FrameBg, (100, 150, 100))
+        dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 5)
+        
+dpg.bind_theme(globalTheme)
+dpg.show_style_editor()
+dpg.set_exit_callback(callback = saveStations)
 dpg.set_primary_window("Main",True)
 dpg.setup_dearpygui()
 dpg.show_viewport()
