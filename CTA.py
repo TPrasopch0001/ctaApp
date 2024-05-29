@@ -112,9 +112,7 @@ with dpg.window(tag = "Main") as main:
 
 # Methods for within main window
     def searchLinePrompt():
-        if dpg.does_item_exist("searchTypeGroup"):
-            dpg.delete_item("searchTypeGroup")
-            dpg.delete_item("Type Handler")
+        dpg.delete_item(searchChild, children_only = True)
         with dpg.group(tag = "searchLineGroup",parent = searchChild):
             dpg.add_text("Line: ")
             dpg.add_input_text(tag = "LineInput", width = 100)
@@ -130,23 +128,35 @@ with dpg.window(tag = "Main") as main:
 
     def searchTypePrompt():
         numTypes = stations_df['Type'].unique().tolist()
-        if dpg.does_item_exist("searchLineGroup"):
-            dpg.delete_item("searchLineGroup")
-            dpg.delete_item("Line Handler")
-        with dpg.group(tag = "searchTypeGroup",parent = searchChild):
-            dpg.add_text("Type: ")
-            dpg.add_listbox(numTypes,num_items = 4,tag = "TypeInput")
-            dpg.add_button(label = "Search", tag = "SearchTypeButton")
+        dpg.delete_item(searchChild, children_only = True)
+        with dpg.group(tag = "searchTypeGroup",parent = searchChild, horizontal = True):
+            with dpg.group():
+                dpg.add_text("Type: ")
+                dpg.add_listbox(numTypes,num_items = 4,tag = "TypeInput")
+                dpg.add_button(label = "Search", tag = "SearchTypeButton")
+            with dpg.group():
+                dpg.add_text("Wheelchair \nAccessible: ")
+                with dpg.popup(dpg.last_item()):
+                    dpg.add_text("If you check this setting, only stations that are accessible will popup, otherwise all result stations will show up")
+                dpg.add_checkbox(tag = "wcBool")
         with dpg.item_handler_registry(tag = "Type Handler"):
             dpg.add_item_clicked_handler(callback = searchType)
         dpg.bind_item_handler_registry("SearchTypeButton", "Type Handler")
 
+    def searchType():
+        dpg.delete_item(resultsChild,children_only = True)
+        search_df = stationByType(dpg.get_value("TypeInput"))
+        if dpg.get_value("wcBool"):
+            generateSearchWindow(search_df.loc[search_df['Accessibility'] == True].reset_index(drop = True))
+        else:
+            generateSearchWindow(search_df)
+
 # Main Window Items
     with dpg.group(tag = "mainGroup", horizontal = True):
         with dpg.child_window(tag = "searchChild",width = (dpg.get_viewport_width())/4, height = dpg.get_item_height(main)) as searchChild:
-            dpg.add_text("search")
+            dpg.add_text("")
         with dpg.child_window(tag = "resultsChild", height = dpg.get_item_height(main)) as resultsChild:
-            dpg.add_text("results")
+            dpg.add_text("")
     with dpg.menu_bar():
         with dpg.menu(label = "Search"):
             dpg.add_menu_item(label = "On A Line", callback = searchLinePrompt)
@@ -154,18 +164,13 @@ with dpg.window(tag = "Main") as main:
         with dpg.menu(label = "Modify"):
             dpg.add_menu_item(label = "Station Name")
 
-    def searchType():
-        dpg.delete_item(resultsChild,children_only = True)
-        search_df = stationByType(dpg.get_value("TypeInput"))
-        generateSearchWindow(search_df)
-
     def generateSearchWindow(search_df):
         if dpg.does_item_exist("results"):
             dpg.delete_item("results")
         if search_df is not None:
             columnNames = search_df.columns.values.tolist()
             with dpg.table(header_row=True, resizable=True, policy=dpg.mvTable_SizingStretchProp,
-                            borders_outerH=True, borders_innerV=True, borders_innerH=True, borders_outerV=True, parent = resultsChild):
+                            row_background = True, parent = resultsChild):
                 for i in columnNames:
                     dpg.add_table_column(label = i)
                 for i in range(0,search_df.shape[0]):
@@ -173,20 +178,16 @@ with dpg.window(tag = "Main") as main:
                         row_list = search_df.loc[i, :].values.flatten().tolist()
                         for j in row_list:
                             with dpg.table_cell():
-                                dpg.add_button(label = j)
+                                dpg.add_text(j)
         else:
             dpg.add_text("Sorry, there were no stations found", parent = resultsChild)
 
 with dpg.theme() as globalTheme:
     with dpg.theme_component(dpg.mvAll):
-        dpg.add_theme_color(dpg.mvThemeCol_ChildBg, (150, 100, 100))
-        dpg.add_theme_color(dpg.mvThemeCol_Button, [150,100,100])
-    with dpg.theme_component(dpg.mvInputInt):
-        dpg.add_theme_color(dpg.mvThemeCol_FrameBg, (100, 150, 100))
-        dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 5)
-        
+        dpg.add_theme_color(dpg.mvThemeCol_ChildBg, (37, 41, 46))
+        dpg.add_theme_color(dpg.mvThemeCol_Button, (18, 88, 176))
 dpg.bind_theme(globalTheme)
-dpg.show_style_editor()
+# dpg.show_style_editor()
 dpg.set_exit_callback(callback = saveStations)
 dpg.set_primary_window("Main",True)
 dpg.setup_dearpygui()
