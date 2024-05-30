@@ -5,8 +5,8 @@ import dearpygui.dearpygui as dpg
 pd.set_option("mode.copy_on_write", True)
 
 # makes lines in order: red,green,blue,brown,purple,pink,orange
-stations_df = pd.read_csv("CTAStops.csv")
-
+stations_df = pd.read_csv("data/CTAStops.csv")
+selectRow = ""
 # Station class, manages each station a little bit easier
 class Station:
     def __init__(self,name = "None", lat = -1, long  = -1, type = "None", wc = False, lines = [0,0,0,0,0,0,0]):
@@ -78,7 +78,7 @@ def stationsOnLine(line):
 
 # returns all stations with a name
 def stationByName(name):
-     return stations_df.loc[stations_df["Name"].str.lower() == name.lower()].reset_index(drop = True)
+     return stations_df[stations_df["Name"].str.contains(name, case = False)].reset_index(drop = True)
 
 
 # returns all stations with a given station description
@@ -98,10 +98,9 @@ def saveStations():
     file.write(columnNames + "\n")
     for index, row in stations_df.iterrows():
         string = str(list(row)).strip('[]') + "\n"
-        string = string.replace("\'","").replace(" ","")
+        string = string.replace("\'","")
         file.write(string)
     file.close()
-
 
 
 dpg.create_context()
@@ -114,11 +113,14 @@ with dpg.font_registry():
     fontOption1 = dpg.add_font("fonts/NotoSerifCJKjp-Medium.otf", 15)
 
 with dpg.window(tag = "Main", no_scrollbar = True, no_resize = True) as main:
+    def selectCallback(sender, app_data, user_data):
+        global selectRow
+        selectRow = user_data
 
 # Methods for within main window
     def searchLinePrompt():
         if not (dpg.does_item_exist("searchChild")):
-            generateNullSearch()
+            generateNullSearchWindow()
         if dpg.does_alias_exist("lineInput"):
             dpg.remove_alias("lineInput")
         dpg.delete_item("searchChild", children_only = True)
@@ -133,11 +135,11 @@ with dpg.window(tag = "Main", no_scrollbar = True, no_resize = True) as main:
     def searchLine():
         dpg.delete_item("resultsChild",children_only = True)
         search_df = stationsOnLine(dpg.get_value("lineInput"))
-        generateSearchWindow(search_df)
+        generateSearchResultsWindow(search_df)
 
     def searchTypePrompt():
         if not (dpg.does_item_exist("searchChild")):
-            generateNullSearch()
+            generateNullSearchWindow()
         if dpg.does_alias_exist("typeInput"):
             dpg.remove_alias("typeInput")
             dpg.remove_alias("typeSearch")
@@ -161,13 +163,13 @@ with dpg.window(tag = "Main", no_scrollbar = True, no_resize = True) as main:
         dpg.delete_item("resultsChild",children_only = True)
         search_df = stationByType(dpg.get_value("typeInput"))
         if dpg.get_value("wcBool"):
-            generateSearchWindow(search_df.loc[search_df['Accessibility'] == True].reset_index(drop = True))
+            generateSearchResultsWindow(search_df.loc[search_df['Accessibility'] == True].reset_index(drop = True))
         else:
-            generateSearchWindow(search_df)
+            generateSearchResultsWindow(search_df)
 
     def searchNamePrompt():
         if not (dpg.does_item_exist("searchChild")):
-            generateNullSearch()
+            generateNullSearchWindow()
         if dpg.does_alias_exist("nameString"):
             dpg.remove_alias("nameString")
             dpg.remove_alias("nameSearch")
@@ -183,11 +185,11 @@ with dpg.window(tag = "Main", no_scrollbar = True, no_resize = True) as main:
     def searchText():
         dpg.delete_item("resultsChild",children_only = True)
         search_df = stationByName(dpg.get_value("nameString").lower())
-        generateSearchWindow(search_df)
+        generateSearchResultsWindow(search_df)
 
     def searchLocPrompt():
         if not (dpg.does_item_exist("searchChild")):
-            generateNullSearch()
+            generateNullSearchWindow()
         if dpg.does_alias_exist("latInput"):
             dpg.remove_alias("latInput")
             dpg.remove_alias("longInput")
@@ -206,7 +208,7 @@ with dpg.window(tag = "Main", no_scrollbar = True, no_resize = True) as main:
         search_df = stationByCoords(lat,long)
         generateSingleSearchWindow(search_df)
     
-    def generateNullSearch():
+    def generateNullSearchWindow():
         dpg.add_group(parent = main, tag = "mainSearchGroup", horizontal = True)
         dpg.add_child_window(parent = "mainSearchGroup",tag = "searchChild",width = (dpg.get_viewport_width())/4)
         dpg.add_child_window(parent = "mainSearchGroup",tag = "resultsChild")
@@ -214,19 +216,34 @@ with dpg.window(tag = "Main", no_scrollbar = True, no_resize = True) as main:
     def cleanSearches():
         dpg.delete_item("mainSearchGroup")
         dpg.remove_alias("mainSearchGroup")
+        
+    def generateNullModifyWindow():
+        dpg.add_group(parent = main, tag = "mainModGroup", horizontal = True)
+        dpg.add_child_window(parent = "mainModGroup",tag = "modChild",width = (dpg.get_viewport_width())/4)
+        dpg.add_child_window(parent = "mainModGroup",tag = "resultsChild")
+    
+    def cleanModWindows():
+        dpg.delete_item("mainModGroup")
+        dpg.remove_alias("mainModGroup")
 
 # Main Window Items
     with dpg.menu_bar():
+        with dpg.menu(label = "Options"):
+            dpg.add_menu_item(label = "Preferences")
         with dpg.menu(label = "Search"):
             dpg.add_menu_item(label = "By Name", callback = searchNamePrompt)
             dpg.add_menu_item(label = "By Location", callback = searchLocPrompt)
             dpg.add_menu_item(label = "On A Line", callback = searchLinePrompt)
             dpg.add_menu_item(label = "Station Description", callback = searchTypePrompt)
         with dpg.menu(label = "Modify"):
-            dpg.add_menu_item(label = "Station Name")
+            dpg.add_menu_item(label = "Add a Station")
+            dpg.add_menu_item(label = "Edit a Station")
+        dpg.add_menu_item(label = "Path Finding")
 
-    def generateSingleSearchWindow(search_df):
-        if search_df is not None:
+
+# GUI handlers
+    def generateSingleSearchWindow(search_df, selectable = False):
+        if search_df is not None or not search_df.empty:
             columnNames = stations_df.columns.values.tolist()
             with dpg.table(header_row=True, policy=dpg.mvTable_SizingStretchProp,
                            borders_outerH=True, borders_innerV=True, borders_innerH=True, borders_outerV=True,
@@ -235,12 +252,15 @@ with dpg.window(tag = "Main", no_scrollbar = True, no_resize = True) as main:
                         dpg.add_table_column(label = i)
                     with dpg.table_row():
                         for j in search_df:
-                            with dpg.table_cell():
+                            if selectable:
+                                dpg.add_selectable(label = j, span_columns = True, callback = selectCallback, user_data = search_df)
+                            else:
                                 dpg.add_text(j)
         else:
             dpg.add_text("Sorry, there were no stations found", parent = "resultsChild")
-    def generateSearchWindow(search_df):
-        if search_df is not None:
+
+    def generateSearchResultsWindow(search_df, selectable = False):
+        if search_df is not None or not search_df.empty:
             columnNames = search_df.columns.values.tolist()
             with dpg.table(header_row=True, policy=dpg.mvTable_SizingStretchProp,
                            borders_outerH=True, borders_innerV=True, borders_innerH=True, borders_outerV=True,
@@ -252,7 +272,10 @@ with dpg.window(tag = "Main", no_scrollbar = True, no_resize = True) as main:
                         row_list = search_df.loc[i, :].values.flatten().tolist()
                         for j in row_list:
                             with dpg.table_cell():
-                                dpg.add_text(j)
+                                if selectable:
+                                    dpg.add_selectable(label = j, span_columns = True, callback = selectCallback, user_data = row_list)
+                                else:
+                                    dpg.add_text(j)
         else:
             dpg.add_text("Sorry, there were no stations found", parent = "resultsChild")
 
@@ -260,10 +283,14 @@ with dpg.theme() as globalTheme:
     with dpg.theme_component(dpg.mvAll):
         dpg.add_theme_color(dpg.mvThemeCol_ChildBg, (37, 41, 46))
         dpg.add_theme_color(dpg.mvThemeCol_Button, (18, 88, 176))
+    with dpg.theme_component(dpg.mvTable):
+        dpg.add_theme_color(dpg.mvThemeCol_Header, (41, 128, 185))
+
+
 dpg.bind_theme(globalTheme)
 dpg.bind_font(defaultFont)
 # dpg.show_font_manager()
-# dpg.show_style_editor()
+dpg.show_style_editor()
 dpg.set_exit_callback(callback = saveStations)
 dpg.set_primary_window("Main",True)
 dpg.setup_dearpygui()
