@@ -91,7 +91,7 @@ def stationByWheelChair(wc):
 
 # save current stations_df as CSV to load on reboot
 def saveStations():
-    file = open("CTAStops.csv", "w")
+    file = open("data/CTAStops.csv", "w")
     columnNames = str(list(stations_df.columns.values))
     columnNames = columnNames.strip('[]')
     columnNames = columnNames.replace('\'',"").replace(" ","")
