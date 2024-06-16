@@ -1,11 +1,11 @@
 import numpy as np;
 import pandas as pd;
 import dearpygui.dearpygui as dpg
-
+import dearpygui.demo as demo
 pd.set_option("mode.copy_on_write", True)
 
 # makes lines in order: red,green,blue,brown,purple,pink,orange
-stations_df = pd.read_csv("data/CTAStops.csv")
+stations_df = pd.read_csv("data/CTAStops.csv",delimiter=' *, *', engine='python')
 selectRow = ""
 # Station class, manages each station a little bit easier
 class Station:
@@ -30,6 +30,14 @@ def modifyStation(index, name, lat, long, type, wc, lines):
 # append station to stations_df
 def addStation(name, lat, long, type, wc, lines):
     stations_df.loc[len(stations_df.index)] = [name, lat, long, type, wc, lines[0],lines[1],lines[2],lines[3],lines[4],lines[5],lines[6]]
+    stations_df['Red'] = np.where(stations_df['Red'] >= lines[0], stations_df['Red'] + 1, stations_df['Red'])
+    stations_df['Green'] = np.where(stations_df['Green'] >= lines[1], stations_df['Green'] + 1, stations_df['Green'])
+    stations_df['Blue'] = np.where(stations_df['Blue'] >= lines[2], stations_df['Blue'] + 1, stations_df['Blue'])
+    stations_df['Brown'] = np.where(stations_df['Brown'] >= lines[3], stations_df['Brown'] + 1, stations_df['Brown'])
+    stations_df['Purple'] = np.where(stations_df['Purple'] >= lines[4], stations_df['Purple'] + 1, stations_df['Purple'])
+    stations_df['Pink'] = np.where(stations_df['Pink'] >= lines[5], stations_df['Pink'] + 1, stations_df['Pink'])
+    stations_df['Orange'] = np.where(stations_df['Orange'] >= lines[6], stations_df['Orange'] + 1, stations_df['Orange'])
+
 
 # creates a station object given an index for stations_df
 def dfToStation(index):
@@ -94,7 +102,7 @@ def saveStations():
     file = open("data/CTAStops.csv", "w")
     columnNames = str(list(stations_df.columns.values))
     columnNames = columnNames.strip('[]')
-    columnNames = columnNames.replace('\'',"").replace(" ","")
+    columnNames = columnNames.replace('\'',"")
     file.write(columnNames + "\n")
     for index, row in stations_df.iterrows():
         string = str(list(row)).strip('[]') + "\n"
@@ -207,7 +215,17 @@ with dpg.window(tag = "Main", no_scrollbar = True, no_resize = True) as main:
         long = dpg.get_value("longInput")
         search_df = stationByCoords(lat,long)
         generateSingleSearchWindow(search_df)
-    
+
+# Station Modifications will have searchChild, resultsChild, modChild
+
+# Using searchChild and resultsChild
+    def addStationPrompt():
+        if not dpg.does_item_exist("mainModGroup"):
+            generateNullModifyWindow()
+        dpg.delete_item("modChild")
+        dpg.remove_alias("modChild")
+        
+
     def generateNullSearchWindow():
         dpg.add_group(parent = main, tag = "mainSearchGroup", horizontal = True)
         dpg.add_child_window(parent = "mainSearchGroup",tag = "searchChild",width = (dpg.get_viewport_width())/4)
@@ -216,12 +234,15 @@ with dpg.window(tag = "Main", no_scrollbar = True, no_resize = True) as main:
     def cleanSearches():
         dpg.delete_item("mainSearchGroup")
         dpg.remove_alias("mainSearchGroup")
-        
+
     def generateNullModifyWindow():
-        dpg.add_group(parent = main, tag = "mainModGroup", horizontal = True)
-        dpg.add_child_window(parent = "mainModGroup",tag = "modChild",width = (dpg.get_viewport_width())/4)
-        dpg.add_child_window(parent = "mainModGroup",tag = "resultsChild")
-    
+        dpg.add_group(parent = main, tag = "mainModGroup")
+        dpg.add_group(parent = "mainModGroup", tag = "modSearchGroup", horizontal = True)
+        dpg.add_child_window(parent = "modSearchGroup",tag = "searchChild",width = (dpg.get_viewport_width())/4, height = (dpg.get_viewport_height())/2.5)
+        dpg.add_child_window(parent = "modSearchGroup",tag = "resultsChild", height = (dpg.get_viewport_height())/2.5)
+        generateSearchResultsWindow(stations_df, True)
+        dpg.add_child_window(parent = "mainModGroup", tag = "modChild", width = (dpg.get_viewport_width())/4,height = (dpg.get_viewport_height())/2.5)
+
     def cleanModWindows():
         dpg.delete_item("mainModGroup")
         dpg.remove_alias("mainModGroup")
@@ -236,8 +257,8 @@ with dpg.window(tag = "Main", no_scrollbar = True, no_resize = True) as main:
             dpg.add_menu_item(label = "On A Line", callback = searchLinePrompt)
             dpg.add_menu_item(label = "Station Description", callback = searchTypePrompt)
         with dpg.menu(label = "Modify"):
-            dpg.add_menu_item(label = "Add a Station")
-            dpg.add_menu_item(label = "Edit a Station")
+            dpg.add_menu_item(label = "Add a Station", callback = addStationPrompt)
+            dpg.add_menu_item(label = "Edit a Station", callback = generateNullModifyWindow)
         dpg.add_menu_item(label = "Path Finding")
 
 
@@ -289,8 +310,9 @@ with dpg.theme() as globalTheme:
 
 dpg.bind_theme(globalTheme)
 dpg.bind_font(defaultFont)
-# dpg.show_font_manager()
-dpg.show_style_editor()
+#dpg.show_font_manager()
+#dpg.show_style_editor()
+demo.show_demo()
 dpg.set_exit_callback(callback = saveStations)
 dpg.set_primary_window("Main",True)
 dpg.setup_dearpygui()
